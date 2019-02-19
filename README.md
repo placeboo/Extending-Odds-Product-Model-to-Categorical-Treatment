@@ -1,0 +1,9 @@
+# Extending Odds Product Model to Categorical/ContinuousTreatment
+
+## Methods Assuming Monotonic Treatment Effects
+
+Simulation is in the file called **rr_monotone_modeling_simulation**
+
+## Parametrization via A Generalized Odds Product Nuisance Model
+
+Simulation is in the file called **rr_gop_simulation**
