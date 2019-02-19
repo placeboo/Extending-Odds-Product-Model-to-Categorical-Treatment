@@ -8,8 +8,8 @@ sample_size = as.numeric(args[[1]])
 seed = as.numeric(args[[2]])
 
 options(error = utils::recover)
-source("rr_gop_simulation/codes/1_generalized_op.R")
-
+#source("rr_gop_simulation/codes/1_generalized_op.R")
+source("rr_gop_simulation/codes/1c_generalized_op.R")
 library(brm)
 #library(tictoc)
 
@@ -18,9 +18,11 @@ beta_true = c(1, -0.5)
 #beta_true = c(1, -1)
 
 N_sim = 200
-#
-# N_sim = 2
-# sample_size = 100
+# #
+# # N_sim = 10
+# # sample_size = 100
+# N_sim = 3
+# sample_size = 50
 # seed = 2
 
 set.seed(seed)

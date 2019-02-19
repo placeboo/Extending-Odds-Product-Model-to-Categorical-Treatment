@@ -99,11 +99,16 @@ max.likelihood.v3 = function(y, z, va, vb, alpha.start, beta.start, max.step=100
 
                 diff = max(max(diff_alpha), diff2)
         }
+        print(cbind(alpha,beta))
+        # update beta
+        # opt2 = stats::optim(beta, neg.log.likelihood.beta, control = list(maxit = max.step))
+        # beta = opt2$par
         # have sd for alpha
         sd.mat = matrix(NA, ncol = num_rr, nrow = pa)
         for (alpha_index in c(1: num_rr)){
                 alphai = alpha[, alpha_index]
                 opti = try(stats::optim(alphai, neg.log.likelihood.alpha,
+                                        method = "CG",
                                     control = list(maxit = max.step), hessian = TRUE), silent  = TRUE)
                 if ("try-error" %in% class(opti)) { # there is no hession (non finite)
                         next
