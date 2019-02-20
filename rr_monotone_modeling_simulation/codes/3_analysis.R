@@ -1,5 +1,5 @@
 rm(list = ls())
-source("codes/1_mono_model.R")
+source("rr_monotone_modeling_simulation/codes/1_mono_model.R")
 
 sample_size_vector = c(50, 100, 500, 1000, 5000)
 date = "2019-02-18"
@@ -14,7 +14,7 @@ cr.mat = matrix(NA, nrow = length(sample_size_vector), ncol = 2)
 
 for(i in 1:length(sample_size_vector)){
       size_i = sample_size_vector[i]
-      filename = paste("data/SampleSize", size_i, "_Seed", seed, "_", date, ".Rdata", sep = "")
+      filename = paste("rr_monotone_modeling_simulation/data/SampleSize", size_i, "_Seed", seed, "_", date, ".Rdata", sep = "")
       load(filename)
 
       # bias of the estimation
@@ -39,7 +39,18 @@ for(i in 1:length(sample_size_vector)){
       alpha1_cr = round(sum(alpha_true[2] > lowerB[2, ] & alpha_true[2] < upperB[2, ]) / N_sim, 3)
       cr.mat[i, ] = c(alpha0_cr, alpha1_cr)
 }
+
+
 filename = paste("rr_monotone_modeling_simulation/data/anlysis_Seed", seed, "_", date,".RData", sep = "")
 save(bias.mat, accuracy.mat, cr.mat, file = filename)
+
+
+# latex output
+library(xtable)
+table = rbind(bias.mat, accuracy.mat, cr.mat)
+colnames(table) = c("alpha_0", "alpha_1")
+rownames(table) = rep(sample_size_vector, 3)
+print(xtable(table))
+
 
 
