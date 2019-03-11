@@ -43,7 +43,11 @@ for (i in 1: length(sample_size.vec)){
 
       # estimated standard deviation
       ## note that there are NA for some runs
-      sd_tmp = apply(mle.mat[c("alpha0_sd","alpha1_sd"),], 1, function(x) mean(x, na.rm = TRUE))
+      if (na_count_tmp!=0) {
+            mle.mat = mle.mat[,!is.na(mle.mat[c("alpha0_sd"), ])]
+      }
+
+      sd_tmp = apply(mle.mat[c("alpha0_sd","alpha1_sd"),], 1, function(x) mean(x))
       accuracy.mat[i,] = round(sd_tmp / mcsd, 3)
 
       # covarage rate
@@ -51,7 +55,7 @@ for (i in 1: length(sample_size.vec)){
       upperB = mle.mat[c("alpha0","alpha1"),] + 1.96 * mle.mat[c("alpha0_sd", "alpha1_sd"),]
 
       cr.mat[i, ] = c(sum((alpha_true[1] > lowerB[1,] & alpha_true[1] < upperB[1, ])),
-                      sum((alpha_true[2] > lowerB[2,] & alpha_true[2] < upperB[2, ])))/1000
+                      sum((alpha_true[2] > lowerB[2,] & alpha_true[2] < upperB[2, ])))/ncol(mle.mat)
 }
 
 

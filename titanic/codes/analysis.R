@@ -6,6 +6,7 @@ library(brm)
 library(tidyr)
 library(xtable)
 library(rms)
+library(sandwich)
 ## ----load functions-----------------------------------------------------------
 source("titanic/codes/functions/makeGroup.R")
 source("functions/generalized_op.R")
@@ -54,16 +55,34 @@ tmp.tab = dat_nm %>%
       mutate(prop = n / sum(n)) %>%
       mutate(sd = sqrt(prop * (1-prop) / n)) %>%
       filter(dead == 1)
+# one/zero dead
+dat_nm %>% ggplot(aes(x=age, y=dead)) +
+      geom_point(size =1) +
+      facet_wrap(. ~sex+pclass, ncol = 3) +
+      x1 +
+      scale_y_continuous(breaks = c(0,1), limits = c(-0.1, 1.1)) +
+      xlab("Age") +
+      ylab("Dead") +
+      theme_bw() +
+      theme(strip.text.x = element_text(size=8, face="bold"),
+            axis.text.x = element_text(color = "grey20", size = 8, face = "plain"),
+            axis.text.y = element_text(color = "grey20", size = 8, face = "plain"),
+            axis.title.x = element_text(color = "grey20", size = 8, face = "bold"),
+            axis.title.y = element_text(color = "grey20", size = 8, face = "bold"))
+ggsave(filename = "titanic/figures/emp-binary-dead-vs-age.eps", width = 150, height = 80, units = "mm")
+
+
 pr_emp.df = tmp.tab %>%
-      select(pclass, sex)
+      ungroup() %>%
+      select(sex, pclass,prop, sd)
 # median age as x-axis
 tmp = dat_nm %>%
       group_by(pclass, age_group, sex) %>%
       summarise(median_age = median(age))
 
 med_age = tmp$median_age
-pr_emp.df$med_age = med_age
-
+pr_emp.df$age = med_age
+pr_emp.df$methods = "emp"
 # Risk
 # tmp.tab %>% ggplot(aes(x=med_age, y=prop, color = sex, linetype = pclass)) +
 #       geom_line(size = 1) +
@@ -97,7 +116,7 @@ tmp = dat_nm %>%
       group_by(age_group, sex) %>%
       summarise(med_age = median(age))
 
-RR_emp.df$med_age = tmp$med_age
+RR_emp.df$age = tmp$med_age
 
 names(RR_emp.df)[c(3,4)] = c("Class2/Class1",  "Class3/Class1")
 # RR_long.df = gather(RR.df, RR_level, RR, prop:prop.1, factor_key = TRUE)
@@ -132,22 +151,30 @@ mydata$pclass_num = recode(mydata$pclass, "1st"= 1, "2nd"=2, "3rd"=3)
 mydata$sex_num = recode(mydata$sex, "male" = 1, "female"=0)
 
 my_v1 = as.matrix(cbind(rep(1, nrow(mydata)),
-                        select(mydata, sex_num, age, age_sq)))
+                        select(mydata, sex_num, age, age_sq),
+                        select(mydata, sex_num) * select(mydata, age)))
+
 
 save(mydata, my_v1, file = "titanic/data/mydata.RData")
 
+pa = 5
+pb = 5
+nz = 3
 
 #---------------------------------------------------------#
 # GLM Poisson
 #---------------------------------------------------------#
+coefs=c("pclass2nd","pclass2nd:sexmale","pclass2nd:age","pclass2nd:age_sq", "pclass2nd:sexmale:age",
+        "pclass3rd","pclass3rd:sexmale","pclass3rd:age","pclass3rd:age_sq", "pclass3rd:sexmale:age")
 poi.lm = glm(dead ~ pclass + sex + age + age_sq + age * sex + pclass * sex + pclass * age + pclass * age_sq +  pclass * age * sex , family = poisson, data = dat_nm)
 save(poi.lm, file = "titanic/data/poi_lm.RData")
 
-poi_coef = summary(poi.lm)$coef[c(coefs), c("Estimate", "Std. Error")]
+poi_coef = summary(poi.lm)$coef[coefs, c("Estimate")]
+poi_sd = sqrt(diag(vcovHC(poi.lm, type="HC0")))[coefs]
 #---------------------------------------------------------#
 # Logistic
 #---------------------------------------------------------#
-logistic.lm = glm(dead ~ pclass + sex + age + age_sq + age * sex + pclass * sex + pclass * age + pclass * age_sq +  pclass * age * sex , family = poisson, data = dat_nm)
+logistic.lm = glm(dead ~ pclass + sex + age + age_sq + age * sex + pclass * sex + pclass * age + pclass * age_sq +  pclass * age * sex , family = binomial, data = dat_nm)
 save(logistic.lm, file = "titanic/data/logistic_lm.RData")
 #---------------------------------------------------------#
 # MLE with Monotone
@@ -157,8 +184,136 @@ v1 = as.matrix(cbind(rep(1, nrow(dat_nm)),
                      select(dat_nm, sex_num) * select(dat_nm, age)))
 mle_mono.md = max.likelihood.v2(y=dat_nm$dead, z = as.factor(dat_nm$pclass_num), va = v1, vb = v1, alpha.start = c(0,0,0,0,0), beta.start = c(0,0,0,0,0))
 save(mle_mono.md, file = "titanic/data/MLE_monotone.RData")
+
+alpha_mle = mle_mono.md[1:pa]
+beta_mle = mle_mono.md[(pa+1):(pa+pa)]
+mle_mono_coef = c(alpha_mle, 2*alpha_mle)
 #---------------------------------------------------------#
 # GOP
 #---------------------------------------------------------#
 gop.md = max.likelihood.v3(y=dat_nm$dead, z = as.factor(dat_nm$pclass_num), va = v1, vb = v1, alpha.start = matrix(0, 5, 2), beta.start = rep(0,5))
-save(gop.md, file = "titanic/data/titaninc_GOP.RData")
+save(gop.md, file = "titanic/data/GOP.RData")
+
+gop_coef  = as.vector(gop.md[[1]])
+
+#------Estimation Table--------------
+est.tab = round(data.frame(poi_coef, mle_mono_coef, gop_coef), 3)
+colnames(est.tab) = c("Poisson", "MLE Mono", "GOP")
+print(xtable(est.tab, digits = 3))
+#------AIC--------------
+AIC_tab = round(c(poi.lm$aic,
+            2 * mle_mono.md[pa+pb+2] + 2 * (pa+pb),
+            2 * gop.md[[4]] + 2 * (pa*2 + pb)),3)
+names(AIC_tab) = c("Poisson", "MLE Mono", "GOP")
+
+#------Risk Plots--------------
+## prepare dataframe
+mydata_glm = data.frame(mydata, pclass_num = rep(c(1:3), each = 2 * length(mydata_age)), pclass = rep(c("1st", "2nd", "3rd"), each = 2 * length(mydata_age)))
+
+pred_glm.df = mydata_glm %>% dplyr::select(sex, age, pclass)
+
+# poisson regressin
+pred_glm.df$poi_pr = exp(predict(poi.lm, newdata = mydata_glm))
+
+# logistic regression
+pred_glm.df$logis_pr = exp(predict(logistic.lm, newdata = mydata_glm)) / (1 + exp(predict(logistic.lm, newdata = mydata_glm)))
+
+# mle
+Pzmin_Pzmax_est =  t(mapply(getProbScalarRR, my_v1 %*% alpha_mle * 2, my_v1 %*% beta_mle))
+
+P.mat = matrix(0, ncol = nz, nrow = nrow(mydata))
+P.mat[, c(1, nz)] = Pzmin_Pzmax_est
+P.mat[, -c(1, nz)] = Pzmin_Pzmax_est[,1] * exp(my_v1 %*% alpha_mle  %*% t(c(1: (nz-2))))
+colnames(P.mat) = c("1st", "2nd","3rd")
+
+pred_mle.df = cbind(select(mydata, sex, age), P.mat)
+pred_mle.df = pred_mle.df %>% distinct()
+pred_mle_long.df = gather(pred_mle.df, key = "pclass", mle_mono_pr, "1st":"3rd")
+
+# gop
+alpha_gop = gop.md[[1]]
+beta_gop = gop.md[[2]]
+logRR.mat = my_v1 %*% alpha_gop
+logOP.mat = my_v1 %*% beta_gop
+P.mat = matrix(0, ncol = nz, nrow = nrow(mydata))
+for(i in 1:nrow(mydata)){
+      P.mat[i,] = getProbScalarRR_v2(logRR.mat[i,], logOP.mat[i])
+}
+colnames(P.mat) = c("1st", "2nd","3rd")
+pred_gop.df = cbind(select(mydata, sex, age), P.mat) %>% distinct()
+pred_gop_long.df = gather(pred_gop.df, key = "pclass", gop_pr, "1st":"3rd")
+
+tmp = pred_gop_long.df %>% full_join(pred_mle_long.df, by = c("sex", "age", "pclass"))
+pr.df = tmp %>% full_join(pred_glm.df, by = c("sex", "age", "pclass"))
+
+pr_long.df = pr.df %>% gather(key = "methods", Pr, "gop_pr":"logis_pr")
+pr_long.df = rbind(pr_long.df, select(pr_emp.df, sex, age, pclass, methods, age, Pr = prop))
+pr_long.df$methods = factor(pr_long.df$methods,
+                            levels = c("emp","poi_pr", "logis_pr", "mle_mono_pr", "gop_pr"),
+                            labels = c("Empirical","Poisson", "Logistic", "Monotone", "Gop"))
+
+pr_long.df %>%
+      ggplot(aes(x = age, y = Pr, color = sex, linetype = pclass)) + geom_line(size = 1) +
+      ylab("Death rate") +
+      xlab("Age") +
+      x1 + y1 +
+      scale_color_discrete(guide=FALSE) + # remove legend
+      scale_linetype_discrete(guid=FALSE) +
+      theme_bw() +
+      facet_wrap(. ~ methods, ncol = 2) +
+      theme(strip.text.x = element_text(size=8, face="bold"),
+            axis.text.x = element_text(color = "grey20", size = 8, face = "plain"),
+            axis.text.y = element_text(color = "grey20", size = 8, face = "plain"),
+            axis.title.x = element_text(color = "grey20", size = 8, face = "bold"),
+            axis.title.y = element_text(color = "grey20", size = 8, face = "bold"))
+
+ggsave(filename = "titanic/figures/pr-by-methods.eps", width = 120, height = 200, units = "mm")
+#----RR----------------------
+RR.mat = matrix(NA, ncol = 7)
+for (i in c("male", "female")){
+      tmp_i = pr.df %>% select(sex, age) %>% filter(sex == i) %>% distinct()
+      tmp_i = rbind(tmp_i, tmp_i)
+      three_to_one = pr.df %>% filter(sex == i, pclass == "3rd") %>% select(gop_pr:logis_pr) / pr.df %>% filter(sex == i, pclass == "1st" ) %>% select(gop_pr:logis_pr)
+
+      two_to_one = pr.df %>% filter(sex == i, pclass == "2nd") %>% select(gop_pr:logis_pr) / pr.df %>% filter(sex == i, pclass == "1st" ) %>% select(gop_pr:logis_pr)
+
+      rr_tmp = cbind(rbind(two_to_one, three_to_one), RR_level = rep(c("Class2/Class1", "Class3/Class1"), each = length(mydata_age)))
+
+      rr_i = cbind(tmp_i, rr_tmp) %>% as.matrix()
+      RR.mat = rbind(RR.mat, rr_i)
+}
+RR.mat = RR.mat[-1,]
+
+RR.df = as.data.frame(RR.mat)
+
+RR_long.df = RR.df %>% gather(key = "methods", RR, "gop_pr":"logis_pr")
+RR_long.df$age = as.numeric(RR_long.df$age)
+emp_tmp = RR_emp.df %>%
+      gather(key = "RR_level", RR, "Class2/Class1":"Class3/Class1") %>%
+      select(sex, age, RR_level, RR) %>%
+      mutate(methods = "emp")
+
+RR_long.df = rbind(RR_long.df, emp_tmp)
+RR_long.df$methods = factor(RR_long.df$methods,
+                            levels = c("emp","poi_pr", "logis_pr", "mle_mono_pr", "gop_pr"),
+                            labels = c("Empirical","Poisson", "Logistic", "Monotone", "Gop"))
+RR_long.df$RR_level = factor(RR_long.df$RR_level,
+                             levels = c( "Class3/Class1", "Class2/Class1"))
+RR_long.df$RR = as.numeric(RR_long.df$RR)
+RR_long.df$age = as.numeric(as.character(RR_long.df$age ))
+
+RR_long.df %>%
+      ggplot(aes(x = age, y = RR, color = sex, linetype = RR_level)) + geom_line(size = 1) +
+      ylab("Relative death rate") +
+      xlab("Age") +
+      x1 +
+      scale_color_discrete(guide=FALSE) + # remove legend
+      scale_linetype_discrete(guid=FALSE) +
+      theme_bw() +
+      facet_wrap(. ~ methods, ncol = 2) +
+      theme(strip.text.x = element_text(size=8, face="bold"),
+            axis.text.x = element_text(color = "grey20", size = 8, face = "plain"),
+            axis.text.y = element_text(color = "grey20", size = 8, face = "plain"),
+            axis.title.x = element_text(color = "grey20", size = 8, face = "bold"),
+            axis.title.y = element_text(color = "grey20", size = 8, face = "bold"))
+ggsave(filename = "titanic/figures/rr-by-methods.eps", width = 120, height = 200, units = "mm")
