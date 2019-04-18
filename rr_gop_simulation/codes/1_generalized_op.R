@@ -3,6 +3,7 @@ same = function (x, y, tolerance = .Machine$double.eps^0.5) {
 }
 
 
+
 getProbScalarRR_v2 = function(logrr, logop){
       k = length(logrr) # levels
 

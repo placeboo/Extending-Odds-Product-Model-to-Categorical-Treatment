@@ -4,7 +4,7 @@
 rm(list = ls())
 source("rr_monotone_modeling_simulation/codes/1_mono_model.R")
 
-sample_size.vec = c(100, 500, 1000)
+sample_size.vec = c(50, 100, 500, 1000, 5000, 10000)
 date = "2019-02-27"
 seed.vec = 1:5
 alpha_true = c(0, 1)
@@ -19,7 +19,7 @@ for (i in 1: length(sample_size.vec)){
       mle_tmp_dat = matrix(NA, nrow = 8)
       for(seed in seed.vec){
             sample_size = sample_size.vec[i]
-            file_name = paste("rr_monotone_modeling_simulation/data2/SampleSize", sample_size, "_Seed", seed,"_", date,".Rdata", sep = "")
+                  file_name = paste("rr_monotone_modeling_simulation/data2/SampleSize", sample_size, "_Seed", seed,"_", date,".Rdata", sep = "")
             load(file = file_name)
             mle_tmp_dat = cbind(mle_tmp_dat, mle.mat)
       }
