@@ -165,8 +165,3 @@ do.one.mle.sim = function(alpha.true, beta.true, sample.size, alpha.start, beta.
       return(mle.mat)
 }
 
-bias_sd = function(bias, sd){
-      return(paste(round(bias, 3), "(", round(sd, 3), ")", sep = ""))
-}
-
-

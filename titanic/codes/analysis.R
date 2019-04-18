@@ -11,6 +11,7 @@ library(sandwich)
 source("titanic/codes/functions/makeGroup.R")
 source("functions/generalized_op.R")
 source("functions/mono_model.R")
+source("functions/var.R")
 ## ----global setting-----------------------------------------------------------
 x1 = scale_x_continuous(breaks = seq(0, 80, 10), limits = c(0,80))
 y1 = scale_y_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1))
@@ -57,19 +58,41 @@ tmp.tab = dat_nm %>%
       filter(dead == 1)
 # one/zero dead
 dat_nm %>% ggplot(aes(x=age, y=dead)) +
-      geom_point(size =1) +
+      geom_point(size = 2, shape = 1) +
       facet_wrap(. ~sex+pclass, ncol = 3) +
       x1 +
       scale_y_continuous(breaks = c(0,1), limits = c(-0.1, 1.1)) +
       xlab("Age") +
-      ylab("Dead") +
+      ylab("Death") +
       theme_bw() +
       theme(strip.text.x = element_text(size=8, face="bold"),
             axis.text.x = element_text(color = "grey20", size = 8, face = "plain"),
             axis.text.y = element_text(color = "grey20", size = 8, face = "plain"),
             axis.title.x = element_text(color = "grey20", size = 8, face = "bold"),
             axis.title.y = element_text(color = "grey20", size = 8, face = "bold"))
-ggsave(filename = "titanic/figures/emp-binary-dead-vs-age.eps", width = 150, height = 80, units = "mm")
+
+ggsave(filename = "titanic/figures/emp-binary-dead-vs-age.eps", width = 140, height = 80, units = "mm")
+
+# male, age 30 - 50
+dat_nm %>%
+      filter(sex == "male", age <= 57, age >= 25) %>%
+      group_by(pclass, dead) %>%
+      summarise(n = n()) %>%
+      mutate(prop = n / sum(n))
+
+# male, age 50 - 80
+dat_nm %>%
+      filter(sex == "male",  age > 57) %>%
+      group_by(pclass, dead) %>%
+      summarise(n = n()) %>%
+      mutate(prop = n / sum(n))
+
+dat_nm %>%
+      filter(sex == "female",  pclass == "2nd", age >= 45) %>%
+      group_by(dead) %>%
+      summarise(n = n()) %>%
+      mutate(prop = n / sum(n))
+
 
 
 pr_emp.df = tmp.tab %>%
@@ -136,6 +159,8 @@ names(RR_emp.df)[c(3,4)] = c("Class2/Class1",  "Class3/Class1")
 dat_nm$pclass_num = recode(dat_nm$pclass, "1st"= 1, "2nd"=2, "3rd"=3)
 dat_nm$sex_num = recode(dat_nm$sex, "male" = 1, "female"=0)
 dat_nm$age_sq = dat_nm$age^2
+save(dat_nm, file = "titanic/data/data_remove_missing.RData")
+
 
 # build my prediction data
 name = c("sex", "age", "pclass", "pr")
@@ -182,12 +207,17 @@ save(logistic.lm, file = "titanic/data/logistic_lm.RData")
 v1 = as.matrix(cbind(rep(1, nrow(dat_nm)),
                      select(dat_nm, sex_num, age, age_sq),
                      select(dat_nm, sex_num) * select(dat_nm, age)))
+save(v1, file = "titanic/data/v1.RData")
+
 mle_mono.md = max.likelihood.v2(y=dat_nm$dead, z = as.factor(dat_nm$pclass_num), va = v1, vb = v1, alpha.start = c(0,0,0,0,0), beta.start = c(0,0,0,0,0))
-save(mle_mono.md, file = "titanic/data/MLE_monotone.RData")
 
 alpha_mle = mle_mono.md[1:pa]
 beta_mle = mle_mono.md[(pa+1):(pa+pa)]
 mle_mono_coef = c(alpha_mle, 2*alpha_mle)
+# sd
+mle_mono_sd = sqrt(rr.mono.var(y=dat_nm$dead, tr = as.factor(dat_nm$pclass_num), va = v1, vb = v1, gamma = alpha_mle, beta=beta_mle))[1:pa]
+
+save(mle_mono.md, mle_mono_sd, file = "titanic/data/MLE_monotone.RData")
 #---------------------------------------------------------#
 # GOP
 #---------------------------------------------------------#
@@ -201,10 +231,10 @@ est.tab = round(data.frame(poi_coef, mle_mono_coef, gop_coef), 3)
 colnames(est.tab) = c("Poisson", "MLE Mono", "GOP")
 print(xtable(est.tab, digits = 3))
 #------AIC--------------
-AIC_tab = round(c(poi.lm$aic,
+AIC_tab = round(c(logistic.lm$aic, poi.lm$aic,
             2 * mle_mono.md[pa+pb+2] + 2 * (pa+pb),
             2 * gop.md[[4]] + 2 * (pa*2 + pb)),3)
-names(AIC_tab) = c("Poisson", "MLE Mono", "GOP")
+names(AIC_tab) = c("Logistic","Poisson", "MLE Mono", "GOP")
 
 #------Risk Plots--------------
 ## prepare dataframe
@@ -253,6 +283,7 @@ pr_long.df$methods = factor(pr_long.df$methods,
                             labels = c("Empirical","Poisson", "Logistic", "Monotone", "Gop"))
 
 pr_long.df %>%
+      filter(methods != "Empirical") %>%
       ggplot(aes(x = age, y = Pr, color = sex, linetype = pclass)) + geom_line(size = 1) +
       ylab("Death rate") +
       xlab("Age") +
@@ -267,7 +298,7 @@ pr_long.df %>%
             axis.title.x = element_text(color = "grey20", size = 8, face = "bold"),
             axis.title.y = element_text(color = "grey20", size = 8, face = "bold"))
 
-ggsave(filename = "titanic/figures/pr-by-methods.eps", width = 120, height = 200, units = "mm")
+ggsave(filename = "titanic/figures/pr-by-methods.eps", width = 140, height = 120, units = "mm")
 #----RR----------------------
 RR.mat = matrix(NA, ncol = 7)
 for (i in c("male", "female")){

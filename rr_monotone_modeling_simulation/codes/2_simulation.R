@@ -7,7 +7,7 @@ sample_size = as.numeric(args[[1]])
 seed = as.numeric(args[[2]])
 
 options(error = utils::recover)
-source("rr_monotone_modeling_simulation/codes/1b_mono_model.R")
+source("rr_monotone_modeling_simulation/codes/1_mono_model.R")
 
 library(brm)
 
