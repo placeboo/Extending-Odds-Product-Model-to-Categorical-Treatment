@@ -58,7 +58,7 @@ tmp.tab = dat_nm %>%
       filter(dead == 1)
 # one/zero dead
 dat_nm %>% ggplot(aes(x=age, y=dead)) +
-      geom_point(size = 2, shape = 1) +
+      geom_point(size = 2, alpha = 0.15) +
       facet_wrap(. ~sex+pclass, ncol = 3) +
       x1 +
       scale_y_continuous(breaks = c(0,1), limits = c(-0.1, 1.1)) +
@@ -71,7 +71,7 @@ dat_nm %>% ggplot(aes(x=age, y=dead)) +
             axis.title.x = element_text(color = "grey20", size = 8, face = "bold"),
             axis.title.y = element_text(color = "grey20", size = 8, face = "bold"))
 
-ggsave(filename = "titanic/figures/emp-binary-dead-vs-age.eps", width = 140, height = 80, units = "mm")
+ggsave(filename = "titanic/figures/emp-binary-dead-vs-age.png", width = 140, height = 80, units = "mm")
 
 # male, age 30 - 50
 dat_nm %>%
@@ -222,20 +222,25 @@ save(mle_mono.md, mle_mono_sd, file = "titanic/data/MLE_monotone.RData")
 # GOP
 #---------------------------------------------------------#
 gop.md = max.likelihood.v3(y=dat_nm$dead, z = as.factor(dat_nm$pclass_num), va = v1, vb = v1, alpha.start = matrix(0, 5, 2), beta.start = rep(0,5))
-save(gop.md, file = "titanic/data/GOP.RData")
+gop.sd = sqrt(rr.gop.var(y = dat_nm$dead, tr = as.factor(dat_nm$pclass_num), va=v1, vb = v1, alpha = gop.md[[1]], beta = gop.md[[2]]))
+save(gop.md, gop.sd, file = "titanic/data/GOP.RData")
 
 gop_coef  = as.vector(gop.md[[1]])
-
 #------Estimation Table--------------
 est.tab = round(data.frame(poi_coef, mle_mono_coef, gop_coef), 3)
 colnames(est.tab) = c("Poisson", "MLE Mono", "GOP")
-print(xtable(est.tab, digits = 3))
+print(xtable(t(est.tab), digits = 3))
+#------sd---------------------------
+sd.tab = round(data.frame(poi_sd, c(mle_mono_sd, 2*mle_mono_sd), c(gop.sd[,-3])), 3)
+names(sd.tab) = c("Poisson", "MLE Mono", "GOP")
+
 #------AIC--------------
 AIC_tab = round(c(logistic.lm$aic, poi.lm$aic,
             2 * mle_mono.md[pa+pb+2] + 2 * (pa+pb),
             2 * gop.md[[4]] + 2 * (pa*2 + pb)),3)
 names(AIC_tab) = c("Logistic","Poisson", "MLE Mono", "GOP")
 
+save(est.tab, sd.tab, AIC_tab, file = "titanic/data/est_tab.RData")
 #------Risk Plots--------------
 ## prepare dataframe
 mydata_glm = data.frame(mydata, pclass_num = rep(c(1:3), each = 2 * length(mydata_age)), pclass = rep(c("1st", "2nd", "3rd"), each = 2 * length(mydata_age)))
