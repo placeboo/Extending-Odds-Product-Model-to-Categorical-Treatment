@@ -285,7 +285,7 @@ pr_long.df$methods = factor(pr_long.df$methods,
 pr_long.df %>%
       filter(methods != "Empirical") %>%
       ggplot(aes(x = age, y = Pr, color = sex, linetype = pclass)) + geom_line(size = 1) +
-      ylab("Death rate") +
+      ylab("Probability of death") +
       xlab("Age") +
       x1 + y1 +
       scale_color_discrete(guide=FALSE) + # remove legend

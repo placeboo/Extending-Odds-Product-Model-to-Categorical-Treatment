@@ -3,5 +3,5 @@
 *.RData
 *.Rdata
 *.Ruserdata
-.Rproj.user
 *.txt
+.Rproj.user
