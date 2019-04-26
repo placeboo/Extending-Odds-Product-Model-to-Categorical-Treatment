@@ -58,7 +58,7 @@ tmp.tab = dat_nm %>%
       filter(dead == 1)
 # one/zero dead
 dat_nm %>% ggplot(aes(x=age, y=dead)) +
-      geom_point(size = 2, shape = 1) +
+      geom_point(size = 2, alpha = 0.15) +
       facet_wrap(. ~sex+pclass, ncol = 3) +
       x1 +
       scale_y_continuous(breaks = c(0,1), limits = c(-0.1, 1.1)) +
@@ -71,7 +71,7 @@ dat_nm %>% ggplot(aes(x=age, y=dead)) +
             axis.title.x = element_text(color = "grey20", size = 8, face = "bold"),
             axis.title.y = element_text(color = "grey20", size = 8, face = "bold"))
 
-ggsave(filename = "titanic/figures/emp-binary-dead-vs-age.eps", width = 140, height = 80, units = "mm")
+ggsave(filename = "titanic/figures/emp-binary-dead-vs-age.png", width = 140, height = 80, units = "mm")
 
 # male, age 30 - 50
 dat_nm %>%
