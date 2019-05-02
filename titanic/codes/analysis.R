@@ -56,6 +56,10 @@ tmp.tab = dat_nm %>%
       mutate(prop = n / sum(n)) %>%
       mutate(sd = sqrt(prop * (1-prop) / n)) %>%
       filter(dead == 1)
+
+dat.count = dat_nm %>%
+      group_by(pclass, sex) %>%
+      summarise(n = n())
 # one/zero dead
 dat_nm %>% ggplot(aes(x=age, y=dead)) +
       geom_point(size = 2, alpha = 0.15) +
@@ -69,7 +73,8 @@ dat_nm %>% ggplot(aes(x=age, y=dead)) +
             axis.text.x = element_text(color = "grey20", size = 8, face = "plain"),
             axis.text.y = element_text(color = "grey20", size = 8, face = "plain"),
             axis.title.x = element_text(color = "grey20", size = 8, face = "bold"),
-            axis.title.y = element_text(color = "grey20", size = 8, face = "bold"))
+            axis.title.y = element_text(color = "grey20", size = 8, face = "bold")) +
+      geom_text(aes(x=40, y=0.5, label=n), data = dat.count, size = 3) # add the number
 
 ggsave(filename = "titanic/figures/emp-binary-dead-vs-age.png", width = 140, height = 80, units = "mm")
 
@@ -186,6 +191,10 @@ pa = 5
 pb = 5
 nz = 3
 
+#----- change age to age/10 ---------------#
+dat_nm$age2 = dat_nm$age/10
+dat_nm$age_sq2 = dat_nm$age_sq/100
+
 #---------------------------------------------------------#
 # GLM Poisson
 #---------------------------------------------------------#
@@ -241,6 +250,7 @@ AIC_tab = round(c(logistic.lm$aic, poi.lm$aic,
 names(AIC_tab) = c("Logistic","Poisson", "MLE Mono", "GOP")
 
 save(est.tab, sd.tab, AIC_tab, file = "titanic/data/est_tab.RData")
+
 #------Risk Plots--------------
 ## prepare dataframe
 mydata_glm = data.frame(mydata, pclass_num = rep(c(1:3), each = 2 * length(mydata_age)), pclass = rep(c("1st", "2nd", "3rd"), each = 2 * length(mydata_age)))
