@@ -11,7 +11,7 @@ load(file = "titanic/data/data_remove_missing.RData")
 st=format(Sys.Date(), "%Y-%m-%d")
 
 n = dim(v1)[1]
-N_sim = 100
+N_sim = 5
 
 do.one.gop = function(){
       idex = sample(1:n, n, replace = TRUE)
