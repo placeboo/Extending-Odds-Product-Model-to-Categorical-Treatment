@@ -25,7 +25,7 @@ for(i in 1: length(sample_size.vec)){
         mle_tmp_dat = array(0, c(2, 6))
         for(seed in seed.vec){
                 sample_size = sample_size.vec[i]
-                file_name = paste("rr_gop_simulation/data3/SampleSize", sample_size, "_Seed", seed,"_", date,".Rdata", sep = "")
+                file_name = paste("rr_gop_simulation/data4/SampleSize", sample_size, "_Seed", seed,"_", date,".Rdata", sep = "")
                 load(file = file_name)
                 mle_tmp_dat = abind(mle_tmp_dat, mle.mat, along = 3)
 
