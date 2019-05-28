@@ -8,10 +8,11 @@ source("functions/generalized_op.R")
 source("functions/mono_model.R")
 load(file = "titanic/data/v1.RData")
 load(file = "titanic/data/data_remove_missing.RData")
-st=format(Sys.Date(), "%Y-%m-%d")
+#st=format(Sys.Date(), "%Y-%m-%d")
+st="2019-05-24"
 
 n = dim(v1)[1]
-N_sim = 5
+N_sim = 2
 
 do.one.gop = function(){
       idex = sample(1:n, n, replace = TRUE)
@@ -21,7 +22,7 @@ do.one.gop = function(){
 
       gop.md = max.likelihood.v3(y=dat_idex$dead, z = as.factor(dat_idex$pclass_num), va = v1_idex, vb = v1_idex, alpha.start = matrix(0, 5, 2), beta.start = rep(0,5))
 
-      gop_coef  = as.vector(gop.md[[1]])
+      gop_coef  = c(as.vector(gop.md[[1]]), as.vector(gop.md[[2]]), op.md[[3]]) # c(alpha, beta, covergence)
 
       return(gop_coef)
 }
