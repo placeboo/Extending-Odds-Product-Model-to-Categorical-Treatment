@@ -40,7 +40,7 @@ do.one = function(seed=1, sample.size, st) {
 
       dat = cbind(trt = z, outcome = y)
       # find the MLE
-      mle = max.likelihood.v3(y, z, va, vb, alpha.start=matrix(rep(0,4),2,2), beta.start=c(0,0), max.step=500, thres=10^-4)
+      mle = max.likelihood.v3(y, z, va, vb, alpha.start=matrix(0,2,2), beta.start=c(0,0), max.step=500, thres=10^-4)
       # sd using close function
       sd2 = sqrt(rr.gop.var(y, z, va, vb, alpha=mle[[1]], beta = mle[[2]]))
 
@@ -50,7 +50,7 @@ do.one = function(seed=1, sample.size, st) {
                             paste("alpha", c(1: (nz-1)), "_sd", sep = ""),
                             paste("alpha", c(1: (nz-1)), "_sd2", sep = ""))
 
-      save(mle.mat, dat, file = paste("gop-boostrap-test/data/simu_Size", sample.size, "_Seed", seed, st, ".RData", sep = ""))
+      save(mle.mat, dat, va, file = paste("gop-bootstrap-test/data/simu_Size", sample.size, "_Seed", seed, "_",st, ".RData", sep = ""))
 
 }
 
