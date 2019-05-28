@@ -8,7 +8,7 @@ seed = as.numeric(args[[1]])
 
 library(brm)
 source("functions/generalized_op.R")
-source("functions/var2.R")
+source("functions/var.R")
 
 
 alpha_true = cbind(c(-0.5,1),c(0.5, 1.5))
