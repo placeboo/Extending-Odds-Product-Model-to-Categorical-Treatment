@@ -1,4 +1,4 @@
-# Extending Odds Product Model to Categorical/ContinuousTreatment
+# Multiplicative Effect Modeling: the General Case
 
 ## Methods Assuming Monotonic Treatment Effects
 Simulation is in the file called **rr_monotone_modeling_simulation**
